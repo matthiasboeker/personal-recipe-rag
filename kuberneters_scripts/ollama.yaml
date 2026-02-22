@@ -1,0 +1,67 @@
+# A dedicated namespace for all our LLM stuff
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: llm
+---
+# Storage for the model weights
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-storage
+  namespace: llm
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# The Ollama deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        ports:
+        - containerPort: 11434
+        volumeMounts:
+        - name: ollama-data
+          mountPath: /root/.ollama
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "8Gi"
+            cpu: "4"
+      volumes:
+      - name: ollama-data
+        persistentVolumeClaim:
+          claimName: ollama-storage
+---
+# The Service so other pods can reach Ollama by name
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: llm
+spec:
+  selector:
+    app: ollama
+  ports:
+  - port: 11434
+    targetPort: 11434

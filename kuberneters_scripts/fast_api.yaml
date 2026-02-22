@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recipe-api
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recipe-api
+  template:
+    metadata:
+      labels:
+        app: recipe-api
+    spec:
+      containers:
+      - name: recipe-api
+        image: recipe-api:v1
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+        env:
+        - name: OLLAMA_URL
+          value: "http://ollama:11434"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: DATABASE_URL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: recipe-api
+  namespace: llm
+spec:
+  selector:
+    app: recipe-api
+  ports:
+  - port: 8000
+    targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: recipe-api
+  namespace: llm
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: recipe-api
+            port:
+              number: 8000
